@@ -1,0 +1,50 @@
+[env]
+EXEC = "stm32-rust-test"
+
+[env.debug]
+PROFILE = "debug"
+OUTDIR = "target/thumbv7m-none-eabi/${PROFILE}"
+
+[env.release]
+PROFILE = "release"
+OUTDIR = "target/thumbv7m-none-eabi/${PROFILE}"
+
+[tasks.build-release]
+condition = { profiles = [ "release" ] }
+command = "cargo"
+args = ["build", "--release", "--features", "__my_building__"]
+
+[tasks.build-debug]
+condition = { profiles = [ "debug" ] }
+command = "cargo"
+args = ["build", "--features", "__my_building__"]
+
+[tasks.buildelf]
+dependencies = ["build-release", "build-debug"]
+
+[tasks.bin]
+command = "arm-none-eabi-objcopy"
+args = ["-Obinary", "${OUTDIR}/${EXEC}", "${OUTDIR}/${EXEC}.bin"]
+dependencies = ["buildelf"]
+
+[tasks.flash]
+command = "stm32flash"
+args = ["-w", "${OUTDIR}/${EXEC}.bin", "-R", "/dev/ttyUSB0"]
+dependencies = ["bin"]
+
+[tasks.gdb]
+command = "gdb-multiarch"
+args = ["-x", "openocd.gdb", "-q", "${OUTDIR}/${EXEC}"]
+dependencies = ["buildelf"]
+
+[tasks.rtfm-autocompletion-helper-sub1]
+command = "sh"
+args = ["-c", "cargo rustc --profile=check -- -Zunstable-options --pretty=expanded; true"]
+
+[tasks.rtfm-autocompletion-helper-sub2]
+command = "cp"
+args = ["target/rtfm-expansion.rs", "src/rtfm-autocompletion-helper.rs"]
+#dependencies = ["rtfm-autocompletion-helper-sub1"]
+
+[tasks.rtfm-autocompletion-helper]
+dependencies = ["rtfm-autocompletion-helper-sub2"]
